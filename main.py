@@ -1,5 +1,5 @@
-from emailer import Emailer
 from init import Init 
+from job_scraper import JobScraper
 import os.path
 data = []
 
@@ -10,6 +10,10 @@ def main():
     with Init() as i:
         i.intro()
         i.checkUtils()
+
+    with JobScraper() as js:
+        js.scrape()
+    
     
     # jobs = getJobs()
 

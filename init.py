@@ -28,7 +28,6 @@ class Init(object):
     def new(self):
         self.clean()
 
-        #with open("./utils/config.yml","a+") as f:
         self.typeOfJobs()
 
         yaml_jobs = [{"Jobs": self.jobs}]
@@ -67,11 +66,6 @@ class Init(object):
         except OSError:
             pass 
         
-
-
-    def existing(self):
-        print('here')
-
     def __enter__(self):
         return self
     
