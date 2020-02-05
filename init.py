@@ -5,6 +5,7 @@ import re
 
 class Init(object):
     def __init__(self):
+        self.info = {}
         self.jobs = []
         self.experience = []
         self.keywords = []
@@ -14,9 +15,11 @@ class Init(object):
         time.sleep(0.5)
         print("\n\nWelcome to the job scraper!\n\n")
         time.sleep(1.5)
-    
+
+        
     def checkUtils(self):
         try:
+            self.checkPersonalUtils()
             self.checkJobsUtils()
             self.checkExperienceUtils()
             self.checkKeyWordsUtils()
@@ -38,6 +41,42 @@ class Init(object):
             if self.validate() == False:
                 self.checkUtils()
         except Exception as e: print(e)
+
+    def checkPersonalUtils(self):
+        if os.path.exists('./utils/personal.yml') == False:
+            self.newPerson()
+        else:
+            with open('./utils/personal.yml') as file:
+                self.info = yaml.full_load(file)
+                print('\nFirst Name: ' + self.info['first'] + "; Last Name: " + self.info['last'] + "; Email: " + self.info['email'] + "; City: " + self.info['city'] + "; State: " + self.info['state'] + ". Is this still correct?")
+                if self.validate() == False:
+                    self.newPerson()
+                
+    def newPerson(self):
+        self.clean('personal')
+
+        print("To begin, I'll need some personal information. The info you enter is only stored on your computer")
+        self.getPersonalInfo()
+
+        with open(r'./utils/personal.yml', 'w') as file:
+            documents = yaml.dump(self.info, file)
+    
+    def getPersonalInfo(self):
+        self.enterPersonalInfo()
+        
+        print('\nFirst Name: ' + self.info['first'] + "\nLast Name: " + self.info['last'] + "\nEmail: " + self.info['email'] + "\nCity: " + self.info['city'] + "\nState: " + self.info['state'])
+        print('Is the above correct?')
+        
+        if self.validate() == False:
+            self.getPersonalInfo()
+        
+
+    def enterPersonalInfo(self):
+        self.info['first'] = input("First Name: ")
+        self.info['last'] = input("Last Name: ")
+        self.info['email'] = input("Email: ")
+        self.info['city'] = input("City: ")
+        self.info['state'] = input("State: ")
 
     def checkJobsUtils(self):
         if os.path.exists('./utils/jobs.yml') == False:
@@ -131,7 +170,7 @@ class Init(object):
     
     def checkKeyWordsUtils(self):
         if os.path.exists('./utils/keywords.yml') == False:
-            print("\nWould you like to look for certain keywords in the description? (recommended)")
+            print("\nWould you like to look for certain keywords in the description? Keywords can be degree majors, skills, etc. (recommended)")
             if self.validate() == True:
                 self.newKeyWords()
         else:
@@ -184,6 +223,8 @@ class Init(object):
         
     def clean(self, typ):
         try:
+            if typ == "personal":
+                os.remove('./utils/personal.yml')
             if typ == "jobs":
                 os.remove('./utils/jobs.yml')
             if typ == "experience":

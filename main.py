@@ -11,8 +11,8 @@ def main():
         i.intro()
         i.checkUtils()
 
-    # with JobScraper() as js:
-    #     js.scrape()
+    with JobScraper() as js:
+        js.checkScrape()
     
     
     # jobs = getJobs()
