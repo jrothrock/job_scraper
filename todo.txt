@@ -1,0 +1,2 @@
+1. make sure inputs are comma seperated, if user submits a list
+2. use pyinstaller with the program
