@@ -1,2 +1,4 @@
 1. make sure inputs are comma seperated, if user submits a list
 2. use pyinstaller with the program
+3. Lower case the job description, and the keywords, then check
+4. Change time checking to be for each post, not for the last on the page

@@ -7,9 +7,10 @@ class Init(object):
     def __init__(self):
         self.info = {}
         self.jobs = []
-        self.experience = []
+        self.experience = {}
         self.keywords = []
         self.yearsReg = re.compile('^[0-9\+\-\,\s]+$')
+        self.checkIsNumber = re.compile('^[0-9\.]+$')
 
     def intro(self):
         time.sleep(0.5)
@@ -28,7 +29,7 @@ class Init(object):
             print('You are searching for: ' + ', '.join(self.jobs) + ' jobs')
             
             if len(self.experience) > 0:
-                print('With: ' + ', '.join(self.experience) + ' years of experience')
+                print('With a minimum of ' + self.experience['minimum'] + ' years and a maximum of ' + self.experience['maximum'] + ' years of experience')
             else:
                 print("You did not specify a certain amount of experience")
 
@@ -85,7 +86,7 @@ class Init(object):
             with open('./utils/jobs.yml') as file:
                 document = yaml.full_load(file)
                 self.jobs = list(document[0].values())[0]
-                print('You were searching for: ' + ', '.join(self.jobs) + ' is this still correct?')
+                print('\nYou were searching for: ' + ', '.join(self.jobs) + ' is this still correct?')
                 if self.validate() == False:
                     self.newJobs()
                 
@@ -127,9 +128,8 @@ class Init(object):
                 self.newExperience()
         else:
             with open('./utils/experience.yml') as file:
-                document = yaml.full_load(file)
-                self.experience = list(document[0].values())[0]
-                print('You were searching for jobs with: ' + ', '.join(self.experience) + ' experience, is this still correct?')
+                self.experience = yaml.full_load(file)
+                print('\nYou were searching for jobs with a minimum experience of ' + self.experience['minimum'] + ' years and maximum of ' + self.experience['maximum'] + '. Is this still correct?')
                 if self.validate() == False:
                     self.newExperience()
     
@@ -138,35 +138,37 @@ class Init(object):
         
         self.getExperience()
 
-        yaml_experience = [{"Experience": self.experience}]
         with open(r'./utils/experience.yml', 'w') as file:
-            documents = yaml.dump(yaml_experience, file)
+            documents = yaml.dump(self.experience, file)
     
     def getExperience(self):
         self.typeOfExperience()
 
-        print('\nYou listed: ' + ', '.join(self.experience) + ' is this correct?')
+        print('\nYou listed ' + self.experience['minimum'] + ' for the minimum, and ' + self.experience['maximum'] + ' for the maximum. Is this correct?')
         
         if self.validate() == False:
             self.getExperience()
 
     def typeOfExperience(self):
-        self.experience = []
+        self.experience = {}
 
-        print("\n Please input the amount of experience you want the job to have. \n The only characters allowed are numbers, pluses, and hyphens. No need for spaces. \n examples: 0, 0+, 0-2, 2+, 3-5, 5+, 5-7, 7+, etc+ \n\n Enter each one, one at a time. Enter \"done\" when you're finished \n")
+        print("\nWhat are your minimum and maximum amount of years of experience you're looking for? I'll search between those two numbers \nExample: if you have two years of exerpience, and you'll take an entry level, put 0 as minimum and 2 as maximum \nI'll match for jobs with: 0-2, 1, 1+, 2+ 2-5, etc. \nEnter whole numbers, as it'll round down decimals.\n")
+        
         while True:
-            experienceInput = input("Experience: ")
-            if experienceInput.lower() == "done":
-                    break
+            experienceInput = input("Minimum amount of experience (years): ")
+            if self.checkIsNumber.match(experienceInput) != None:
+                self.experience['minimum'] = experienceInput
+                break
             else:
-                if self.yearsReg.match(experienceInput) != None:
-                    if "," in experienceInput.strip():
-                        experienceList = list(filter(None, [x.strip() for x in experienceInput.split(',')]))
-                        self.experience = self.experience + experienceList
-                    else:
-                        self.experience.append(experienceInput.strip())
-                else:
-                    print("Only numbers, pluses, and hyphens are allowed. \n")
+                print("Only numbers are allowed")
+        
+        while True:
+            experienceInput = input("Maxmimum amount of experience (years): ")
+            if self.checkIsNumber.match(experienceInput) != None:
+                self.experience['maximum'] = experienceInput
+                break
+            else:
+                print("Only numbers are allowed")
     
     def checkKeyWordsUtils(self):
         if os.path.exists('./utils/keywords.yml') == False:
@@ -176,8 +178,8 @@ class Init(object):
         else:
             with open('./utils/keywords.yml') as file:
                 document = yaml.full_load(file)
-                self.experience = list(document[0].values())[0]
-                print('You were searching for jobs with the following keywords: ' + ', '.join(self.keywords) + ' is this still correct?')
+                self.keywords = list(document[0].values())[0]
+                print('\nYou were searching for jobs with the following keywords: ' + ', '.join(self.keywords) + ' is this still correct?')
                 if self.validate() == False:
                     self.newExperience()
     
