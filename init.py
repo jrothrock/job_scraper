@@ -2,6 +2,8 @@ import time
 import os.path
 import yaml
 import re
+import pathlib
+import shutil 
 
 class Init(object):
     def __init__(self):
@@ -21,6 +23,7 @@ class Init(object):
     def checkUtils(self):
         try:
             self.checkPersonalUtils()
+            self.checkFileUtils()
             self.checkJobsUtils()
             self.checkExperienceUtils()
             self.checkKeyWordsUtils()
@@ -52,7 +55,7 @@ class Init(object):
                 print('\nFirst Name: ' + self.info['first'] + "; Last Name: " + self.info['last'] + "; Email: " + self.info['email'] + "; City: " + self.info['city'] + "; State: " + self.info['state'] + ". Is this still correct?")
                 if self.validate() == False:
                     self.newPerson()
-                
+            
     def newPerson(self):
         self.clean('personal')
 
@@ -78,6 +81,44 @@ class Init(object):
         self.info['email'] = input("Email: ")
         self.info['city'] = input("City: ")
         self.info['state'] = input("State: ")
+    
+    def checkFileUtils(self):
+        pathString = None
+        if os.path.exists('./utils/files.yml') == False:
+            homePath = str(pathlib.Path().home())
+            
+            print("\nLet's create a folder to house all of your stuff.\nWhere would you like to place the folder?\n 1. documents \n 2. desktop \n 3. downloads")
+            while True:
+                # technically, a period is allowed, but it's whatever
+                destination = input("Enter number:")
+                if self.checkIsNumber.match(destination) != None:
+                    if destination == "1":
+                        pathString = homePath + "/documents"
+                        break
+                    elif destination == "2":
+                        pathString = homePath + "/desktop"
+                        break
+                    elif destination == "3":
+                        pathString = homePath + "/downloads"
+                        break
+                    else:
+                      print("Only numbers are allowed. Please enter 1 for documents, 2 for desktop, or 3 for downloads")  
+                else:
+                    print("Only numbers are allowed. Please enter 1 for documents, 2 for desktop, or 3 for downloads")
+  
+            try:
+                folderPath = pathString + "/JobScraper"
+                if os.path.exists(folderPath) == False:
+                    currentPath = str(pathlib.Path().absolute())
+                    filesPath = currentPath + "/files"
+                    shutil.copytree(filesPath, folderPath) 
+                    
+                with open(r'./utils/files.yml', 'w') as file:
+                    documents = yaml.dump({"path": folderPath}, file)
+                
+            except:
+                print("hmm... If you see this, please report this. As this will cause a lot of problems, and I was too lazy to actually build something for this error.")
+
 
     def checkJobsUtils(self):
         if os.path.exists('./utils/jobs.yml') == False:

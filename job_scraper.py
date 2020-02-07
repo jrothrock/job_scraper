@@ -15,6 +15,7 @@ import time
 import yaml
 from text2digits import text2digits
 import datetime
+import openpyxl as pyxl
 
 class JobScraper(object):
     def __init__(self):
@@ -52,6 +53,12 @@ class JobScraper(object):
                 self.info = yaml.full_load(file)
         else:
             self.info = {}
+        
+        if os.path.exists('./utils/files.yml') == True:
+            with open(r'./utils/files.yml') as file:
+                self.path = yaml.full_load(file)
+        else:
+            self.path = {}
 
         if os.path.exists('./utils/keywords.yml') == True:
             with open(r'./utils/keywords.yml') as file:
@@ -138,10 +145,10 @@ class JobScraper(object):
                     date = row.find_element_by_xpath('.//div[@class="job-date"]')
                     url = row.find_element_by_xpath('.//div[@class="wrap-view-page"]/a')
                     #print(url.get_attribute("href"))
-                    if self.checkDistance(title.text) == True:
-                        urls.append(url.get_attribute("href"))
+                    # if self.checkDistance(title.text) == True:
+                    #     urls.append(url.get_attribute("href"))
                     # used for testing
-                    #urls.append(url.get_attribute("href"))
+                    urls.append(url.get_attribute("href"))
                 except Exception as ex:
                     print(ex)
             
@@ -193,9 +200,38 @@ class JobScraper(object):
     def noteCompany(self, title, company, location, url):
         # instead of using text, change to xlsx
         # may be able to pull datePosted from schema tags on builtin
-        with open("./files/jobsearch.txt","a+") as f:
-            text = title + " " + company + " " + location  + " " + url + "\n"
-            f.write(text)
+        if self.path['path'] != None:
+            if os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
+                workbook = pyxl.Workbook()
+                sheet = workbook.active
+                sheet["A1"] = "Title"
+                sheet["B1"] = "Company"
+                sheet["C1"] = "Location"
+                sheet["D1"] = "URL"
+
+                sheet["A2"] = title
+                sheet["B2"] = company
+                sheet["C2"] = location
+                sheet["D2"] = url
+                
+                workbook.save(filename=self.path['path'] + '/jobs/scraped_jobs.xlsx')
+            else:
+                workbook = pyxl.load_workbook(self.path['path'] + '/jobs/scraped_jobs.xlsx')
+                sheet = workbook.active
+                row = sheet.max_row + 1
+                
+                sheet['A'+str(row)] = title
+                sheet["B"+str(row)] = company
+                sheet["C"+str(row)] = location
+                sheet["D"+str(row)] = url
+
+                workbook.save(filename=self.path['path'] + '/jobs/scraped_jobs.xlsx')
+
+        else:
+            print("Remember that issue I noted earlier? Well, we finally hit it.\n I have wrote the scraped stuff into a text file that is found within this applications folders, and may be hard to reach...")
+            with open("./files/jobsearch.txt","a+") as f:
+                text = title + " " + company + " " + location  + " " + url + "\n"
+                f.write(text)
 
     def checkTime(self, s):
         s = s.replace("hour ", "hours ").replace("day ", "days ").replace("month ", "months ")
