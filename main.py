@@ -32,7 +32,8 @@ class Main(object):
                             raise
                         else: 
                             pass
-                    except:
+                    except Exception as e:
+                        print(e)
                         self.tryAndFix()
 
         except Exception as e: 

@@ -25,10 +25,12 @@ class JobScraper(object):
         self.days = None
         self.minimum = None
         self.maximum = None
+        self.contractToHireBoolean = True
         self.caps = DesiredCapabilities().CHROME
         self.caps["pageLoadStrategy"] = "eager"
         self.checkIsNumber = re.compile('^[0-9\,\s]+$')
         self.findYearsOfExperience = re.compile('([\d{1}][\d{1}]?)-?\s?(to)?\s?([\d{1}][\d{1}]?)?\+?\syear.*(experience|implementing|writing)')
+        self.contractToHire = re.compile('(has a client)?((d|D)uration(:)? [\d]?-?[\d]?[\d]? (month(s)?|year(s)?|week(s)?))?((o|O)ur .* client is (looking|seeking|searching))?((C|c)ontract position)?([\d]?-?[\d]?[\d]? (month(s)?|year(s)?|week(s))? contract)?')
         self.t2d = text2digits.Text2Digits()
         self.driver = webdriver.Chrome(desired_capabilities=self.caps, executable_path=ChromeDriverManager().install())
         if os.path.exists('./utils/jobs.yml') == True:
@@ -73,14 +75,6 @@ class JobScraper(object):
         print("Job Scraper")
         print("//////")
 
-        print('\nHow far back (in days) are you willing to look? (A smaller number is recommended [like 3], as there may already be a lot of applicants)')
-
-        while True:
-            daysAnswer = input("Enter Number Of Days: ")
-            if self.checkIsNumber.match(daysAnswer) != None:
-                self.days = int(daysAnswer)
-                break
-
         print("\nThere are a few places to scrape for jobs.")
         print("Which places would you like to scrape?\n 1. Google \n 2. BuiltIn \nIf you'd like to select multiple, comma seperate the numbers")
         
@@ -99,13 +93,20 @@ class JobScraper(object):
             self.initBuiltIn()
         
         if self.google == True:
-            print("\nScraping Google has not been built yet, check back in a little! Returning to Main Dashboard")
-            time.sleep(3)
+            self.initGoogle()
         
         print("\n** Job Scraper Completed, Returning To Main Dashboard **")
         time.sleep(1)
                 
     def initBuiltIn(self):
+        print('\nHow far back (in days) are you willing to look? (A smaller number is recommended [like 3], as there may already be a lot of applicants)')
+
+        while True:
+            daysAnswer = input("Enter Number Of Days: ")
+            if self.checkIsNumber.match(daysAnswer) != None:
+                self.days = int(daysAnswer)
+                break
+
         print("\nWhich BuiltIns would you like to scrape?")
         print(" 1. Austin\n 2. Boston \n 3. Chicago \n 4. Colorado \n 5. Los Angeles \n 6. NYC \n 7. San Francisco \n 8. Seattle \nIf you'd like to select multiple, comma seperate the numbers")
 
@@ -154,10 +155,10 @@ class JobScraper(object):
                     date = row.find_element_by_xpath('.//div[@class="job-date"]').text
                     url = row.find_element_by_xpath('.//div[@class="wrap-view-page"]/a').get_attribute("href")
                     #print(url)
-                    # if self.checkDistance(title) == True:
-                    #     posts.append({"href": url, "posted": date})
+                    if self.checkDistance(title) == True:
+                        posts.append({"href": url, "posted": date})
                     # used for testing
-                    posts.append({"href": url, "posted": date})
+                    #posts.append({"href": url, "posted": date})
                 except Exception as ex:
                     pass
 
@@ -193,6 +194,93 @@ class JobScraper(object):
                     self.noteCompany(title, company, location, BuiltInUrl, self.getDate(posted))
                 except Exception as ex:
                     print(ex)
+        
+    def initGoogle(self):
+        print("\nWhat is the location of the job you're looking for:")
+        location = input("Location: ")
+
+        print('\nHow far back (in days) are you willing to look? (A smaller number is recommended, as there may already be a lot of applicants)\nOptions:\n 1. Today\n 2. 3 days\n 3. 1 week \n 4. 1 month')
+
+        daysStr = None
+        while True:
+            daysAnswer = input("Enter Option: ")
+            if self.checkIsNumber.match(daysAnswer) != None:
+                if daysAnswer == "1":
+                    daysStr = "today"
+                    break
+                elif daysAnswer == "2":
+                    daysStr = "3days"
+                    break
+                elif daysAnswer == "3":
+                    daysStr = "week"
+                    break
+                elif daysAnswer == "4":
+                    daysStr = "month"
+                    break
+        
+        print("\nWhat is the radius of your job search?\nOptions:\n 1. 5 mi\n 2. 15 mi\n 3. 30 mi\n 4. 60 mi \n 5. 200 mi \n 6. Anywhere")
+        radiusStr = None
+        while True:
+            radiusAnswer = input("Enter Option: ")
+            if self.checkIsNumber.match(radiusAnswer) != None:
+                if radiusAnswer == "1":
+                    radiusStr = "8.0467"
+                    break
+                elif radiusAnswer == "2":
+                    radiusStr = "24.1401"
+                    break
+                elif radiusAnswer == "3":
+                    radiusStr = "48.2802"
+                    break
+                elif radiusAnswer == "4":
+                    radiusStr = "96.5604"
+                    break
+                elif radiusAnswer == "5":
+                    radiusStr = "321.868"
+                    break
+                elif radiusAnswer == "6":
+                    radiusStr = "-1"
+                    break
+        
+        print("\nWould you like to keep contract to hires? (If you don't know what this is, select Y) - Note, this feature doesn't work 100% of the time")
+
+        if self.validate() == True:
+            self.contractToHireBoolean = True
+        else:
+            self.contractToHireBoolean = False
+
+        for job in self.jobs:
+            jobStr = job.replace(" ", "+")
+            locStr = location.strip().replace(" ", "+") 
+            url = "https://www.google.com/search?q=" + jobStr + "+" + locStr + "+jobs" + "&ibp=htl;jobs#htivrt=jobs&fpstate=tldetail&htichips=date_posted:"+daysStr+"&htischips=date_posted;"+daysStr+"&htilrad="+radiusStr
+            self.scrapeGoogle(url)
+
+    def scrapeGoogle(self, url):
+        print("\nScraping Google. This may take awhile...")
+
+        self.driver.get(url)
+        time.sleep(5)
+        wait = WebDriverWait(self.driver, 100).until(EC.visibility_of_element_located((By.CLASS_NAME, "ZBwwL")))
+        # this really isn't the best way to do this. Should try and figure out how to do the recursion with execute_script
+        for _ in range(10):
+            time.sleep(1)
+            self.driver.execute_script("var bottom = function(){var bottomLI = document.getElementsByClassName('gws-plugins-horizon-jobs__li-ed')[document.getElementsByClassName('gws-plugins-horizon-jobs__li-ed').length-1].offsetTop;document.getElementsByClassName('zxU94d')[0].scrollTop=bottomLI;}()")
+        body = body = self.driver.find_element_by_class_name('ZBwwL')
+        rows = body.find_elements(By.CLASS_NAME, "gws-plugins-horizon-jobs__li-ed")
+
+        for index in range(len(rows)):
+            title = self.driver.execute_script("return document.getElementsByClassName('KLsYvd')["+str(index)+"].innerText")
+            company = self.driver.execute_script("return document.getElementsByClassName('nJlQNd')["+str(index)+"].innerText")
+            location = self.driver.execute_script("return document.getElementsByClassName('tJ9zfc')["+str(index)+"].children[1].innerText")
+            description = self.driver.execute_script("return document.getElementsByClassName('HBvzbc')["+str(index)+"].innerText")
+            posted = self.driver.execute_script("return document.getElementsByClassName('ocResc')["+str(index)+"].querySelectorAll('span[aria-label=\"Posted\"]')[0].parentElement.querySelector('.SuWscb').innerText")
+            t2dDescription = self.t2d.convert(description)
+            if self.checkExperience(t2dDescription) == True:
+                if len(self.keywords) == 0 or any(word in t2dDescription for word in self.keywords):
+                    if self.contractToHireBoolean == True or self.contractToHire.match(t2dDescription) != None:
+                        self.noteCompany(title, company, location, url, self.getDate(posted))
+
+        time.sleep(2)
 
     def checkExperience(self, text):
         captured = self.findYearsOfExperience.search(text)
@@ -260,6 +348,14 @@ class JobScraper(object):
     def checkDistance(self, word):
         values = map(lambda x : fuzz.ratio(x, word) >= 72, self.jobs)
         return any(x == True for x in values)
+    
+    def validate(self):
+        while True:
+            q = input("(Y or N): ")
+            if q.lower() == "y":
+                return True
+            if q.lower() == "n":
+                return False
 
     def __enter__(self):
         return self
