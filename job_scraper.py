@@ -11,11 +11,12 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from shutil import copy2 as copy
 from fuzzywuzzy import fuzz
 from webdriver_manager.chrome import ChromeDriverManager
-import time
 import yaml
 from text2digits import text2digits
 import datetime
-import openpyxl as pyxl
+import xlrd
+import time
+from StyleFrame import StyleFrame
 
 class JobScraper(object):
     def __init__(self):
@@ -68,6 +69,10 @@ class JobScraper(object):
             self.keywords = []
     
     def checkScrape(self):
+        print("\n\n//////")
+        print("Job Scraper")
+        print("//////")
+
         print('\nHow far back (in days) are you willing to look? (A smaller number is recommended [like 3], as there may already be a lot of applicants)')
 
         while True:
@@ -94,7 +99,11 @@ class JobScraper(object):
             self.initBuiltIn()
         
         if self.google == True:
-            print("this hasn't been built yet, check back in a little!")
+            print("\nScraping Google has not been built yet, check back in a little! Returning to Main Dashboard")
+            time.sleep(3)
+        
+        print("\n** Job Scraper Completed, Returning To Main Dashboard **")
+        time.sleep(1)
                 
     def initBuiltIn(self):
         print("\nWhich BuiltIns would you like to scrape?")
@@ -121,11 +130,12 @@ class JobScraper(object):
 
     
     def scrapeBuiltIn(self, bultInUrl):
+        print("\n\nScraping... This may take awhile")
         page = 0
         
         while True:
-            urls = []
 
+            posts = []
             url = bultInUrl + str(page)
 
             # for some reason, /jobs?page=0 is different than just normal /jobs...
@@ -140,29 +150,28 @@ class JobScraper(object):
 
             for row in rows:
                 try:
-                    title = row.find_element_by_xpath('.//h2[@class="title"]')
-                    company = row.find_element_by_xpath('.//div[@class="company-title"]')
-                    date = row.find_element_by_xpath('.//div[@class="job-date"]')
-                    url = row.find_element_by_xpath('.//div[@class="wrap-view-page"]/a')
-                    #print(url.get_attribute("href"))
-                    # if self.checkDistance(title.text) == True:
-                    #     urls.append(url.get_attribute("href"))
+                    title = row.find_element_by_xpath('.//h2[@class="title"]').text
+                    date = row.find_element_by_xpath('.//div[@class="job-date"]').text
+                    url = row.find_element_by_xpath('.//div[@class="wrap-view-page"]/a').get_attribute("href")
+                    #print(url)
+                    # if self.checkDistance(title) == True:
+                    #     posts.append({"href": url, "posted": date})
                     # used for testing
-                    urls.append(url.get_attribute("href"))
+                    posts.append({"href": url, "posted": date})
                 except Exception as ex:
-                    print(ex)
-            
-            for url in urls:
-                self.scrapeBuiltInPost(url)
+                    pass
 
-            if self.checkTime(lastDate.lower()) == True:
+            for post in posts:
+                 self.scrapeBuiltInPost(post["href"], post["posted"])
+
+            if self.checkTime(lastDate) == True:
                 page += 1
             else:
                 break
                 
 
 
-    def scrapeBuiltInPost(self, BuiltInUrl):
+    def scrapeBuiltInPost(self, BuiltInUrl, posted):
         self.driver.get(BuiltInUrl)
         time.sleep(1)
         wait = WebDriverWait(self.driver, 100).until(EC.visibility_of_element_located((By.CLASS_NAME, "block-region-middle")))
@@ -181,7 +190,7 @@ class JobScraper(object):
                     title = body.find_element_by_xpath('.//h1[@class="node-title"]/span').text
                     company = body.find_element_by_xpath('.//div[@class="job-info"]/div/div/a').text
                     location = body.find_element_by_xpath('.//span[@class="company-address"]').text
-                    self.noteCompany(title, company, location, BuiltInUrl)
+                    self.noteCompany(title, company, location, BuiltInUrl, self.getDate(posted))
                 except Exception as ex:
                     print(ex)
 
@@ -197,35 +206,26 @@ class JobScraper(object):
         else:
             return False
 
-    def noteCompany(self, title, company, location, url):
-        # instead of using text, change to xlsx
-        # may be able to pull datePosted from schema tags on builtin
-        if self.path['path'] != None:
+    def noteCompany(self, title, company, location, url, datePosted):
+        if "path" in self.path and self.path['path'] != "":
+            columns = ['Title','Company','Location','URL', 'Date Posted', 'Date Scraped', 'Would You Like To Scrape Emails?','Emails Scraped', 'Date Emails Scraped', 'Have Emailed', 'Applied To (This one you\'ll have to manager on your own)', 'Applied To Date (Again, you\'ll have to manage this)']
+            job = [(title, company, location, url, datePosted, datetime.datetime.now().strftime("%x"), None, None, None, None, None, None)]
             if os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
-                workbook = pyxl.Workbook()
-                sheet = workbook.active
-                sheet["A1"] = "Title"
-                sheet["B1"] = "Company"
-                sheet["C1"] = "Location"
-                sheet["D1"] = "URL"
-
-                sheet["A2"] = title
-                sheet["B2"] = company
-                sheet["C2"] = location
-                sheet["D2"] = url
-                
-                workbook.save(filename=self.path['path'] + '/jobs/scraped_jobs.xlsx')
+                excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/jobs/scraped_jobs.xlsx')
+                df = pd.DataFrame(job, columns=columns)
+                sf = StyleFrame(df)
+                sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Date Posted', 'Date Scraped'))
+                excel_writer.save()
             else:
-                workbook = pyxl.load_workbook(self.path['path'] + '/jobs/scraped_jobs.xlsx')
-                sheet = workbook.active
-                row = sheet.max_row + 1
-                
-                sheet['A'+str(row)] = title
-                sheet["B"+str(row)] = company
-                sheet["C"+str(row)] = location
-                sheet["D"+str(row)] = url
-
-                workbook.save(filename=self.path['path'] + '/jobs/scraped_jobs.xlsx')
+                df = pd.read_excel(self.path['path'] + '/jobs/scraped_jobs.xlsx', index=False)
+                # check if job has already been scraped
+                if len(df.loc[(df.Title == title ) & (df.Company == company)]) == 0:
+                    df2 = pd.DataFrame(job, columns=columns)
+                    dfnew = df.append(df2, ignore_index=True)
+                    excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/jobs/scraped_jobs.xlsx')
+                    sf = StyleFrame(dfnew)
+                    sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Date Posted', 'Date Scraped'))
+                    excel_writer.save()
 
         else:
             print("Remember that issue I noted earlier? Well, we finally hit it.\n I have wrote the scraped stuff into a text file that is found within this applications folders, and may be hard to reach...")
@@ -234,7 +234,7 @@ class JobScraper(object):
                 f.write(text)
 
     def checkTime(self, s):
-        s = s.replace("hour ", "hours ").replace("day ", "days ").replace("month ", "months ")
+        s = s.lower().replace("hour ", "hours ").replace("day ", "days ").replace("month ", "months ")
         parsed_s = [s.split()[:2]]
         time_dict = dict((fmt,float(amount)) for amount,fmt in parsed_s)
         timeDelta = datetime.timedelta(**time_dict)
@@ -247,6 +247,15 @@ class JobScraper(object):
                 return False
         except:
             return False
+    
+    def getDate(self, s):
+        s = s.lower().replace("hour ", "hours ").replace("day ", "days ").replace("month ", "months ")
+        parsed_s = [s.split()[:2]]
+        time_dict = dict((fmt,float(amount)) for amount,fmt in parsed_s)
+        timeDelta = datetime.timedelta(**time_dict)
+        today = datetime.datetime.today()
+        posted = today - timeDelta
+        return posted.strftime("%x")
 
     def checkDistance(self, word):
         values = map(lambda x : fuzz.ratio(x, word) >= 72, self.jobs)

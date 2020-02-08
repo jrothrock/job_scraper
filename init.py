@@ -14,13 +14,10 @@ class Init(object):
         self.yearsReg = re.compile('^[0-9\+\-\,\s]+$')
         self.checkIsNumber = re.compile('^[0-9\.]+$')
 
-    def intro(self):
-        time.sleep(0.5)
-        print("\n\nWelcome to the job scraper!\n\n")
-        time.sleep(1.5)
-
-        
     def checkUtils(self):
+        print("\n\n////")
+        print("Initial Information")
+        print("////")
         try:
             self.checkPersonalUtils()
             self.checkFileUtils()
@@ -44,6 +41,8 @@ class Init(object):
             print("Is this correct?\n")
             if self.validate() == False:
                 self.checkUtils()
+            else:
+                print("\n** Initial Information Completed, Returning To Main Dashboard **")
         except Exception as e: print(e)
 
     def checkPersonalUtils(self):
@@ -59,7 +58,7 @@ class Init(object):
     def newPerson(self):
         self.clean('personal')
 
-        print("To begin, I'll need some personal information. The info you enter is only stored on your computer")
+        print("\nTo begin, I'll need some personal information. The info you enter is only stored on your computer")
         self.getPersonalInfo()
 
         with open(r'./utils/personal.yml', 'w') as file:
@@ -69,7 +68,7 @@ class Init(object):
         self.enterPersonalInfo()
         
         print('\nFirst Name: ' + self.info['first'] + "\nLast Name: " + self.info['last'] + "\nEmail: " + self.info['email'] + "\nCity: " + self.info['city'] + "\nState: " + self.info['state'])
-        print('Is the above correct?')
+        print('\nIs the above correct?')
         
         if self.validate() == False:
             self.getPersonalInfo()
@@ -150,7 +149,7 @@ class Init(object):
 
     def typeOfJobs(self):
         self.jobs = []
-        print("What type of jobs are looking for? Enter one at a time. Type \"Done\" when you're finished")
+        print("\nWhat type of jobs are looking for? Enter one at a time. Type \"Done\" when you're finished")
         while True:
             jobsInput = input("Job Name: ")
             if jobsInput.lower() == "done":
@@ -213,7 +212,7 @@ class Init(object):
     
     def checkKeyWordsUtils(self):
         if os.path.exists('./utils/keywords.yml') == False:
-            print("\nWould you like to look for certain keywords in the description? Keywords can be degree majors, skills, etc. (recommended)")
+            print("\nWould you like to look for certain keywords in the description? Keywords can be degree majors, skills, certifications, etc. (recommended)")
             if self.validate() == True:
                 self.newKeyWords()
         else:
@@ -244,7 +243,7 @@ class Init(object):
     def typeOfKeywords(self):
         self.keywords = []
 
-        print("\n Please input the keywords you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\n Enter each one, one at a time. Enter \"done\" when you're finished \n")
+        print("\n Please input the keywords you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\n Enter each one, one at a time. Enter \"Done\" when you're finished \n")
         while True:
             keywordsInput = input("Key Words: ")
             if keywordsInput.lower() == "done":
@@ -281,4 +280,4 @@ class Init(object):
         return self
     
     def __exit__(self, *args, **kwargs):
-        return self
+       return self
