@@ -2,25 +2,25 @@
 
 ## What is this for?
 
-This job scraper is to help eliminate one from the mass crowd of those applying to applications. Instead, this meant to email the recruiters and managers of the potential postion.
+This job scraper helps find jobs that one is qualified for (by scraping either/both Google or BuiltIn) and matching one's years of experience and skillsets to the job.
 
-The scraper can check for jobs on BuiltIn that match a specific title(s) one is looking for, a range of experience they have, as well as keywords (such as skills, degrees, etc) that is in the job description.
+Additionally, the scraper can harvest emails of recruiters who work at one's qualified job opportunitiees, and can send them an email with one's resume and custom or prebuilt email templates.
 
-To read more about this, read my article: [How I found my first job out of college with an ad spend of $300](https://jackrothrock.com/how-i-found-my-first-job-out-of-college/)
+To read more about this, read my article: [How I Used Python To Automate My Job Search](https://jackrothrock.com/how-i-use-python-to-automate-my-job-search/)
 
 Once `main.py` has been run, it will ask for many inputs that pertain to the job search (such as job titles, amount of experience, keywords, location, and where to scrape), and will then commence scraping and emailing.
 
 Credit to austinoboyle for his [linkedin scraping solution](https://github.com/austinoboyle/scrape-linkedin-selenium).
 
+Requires Python3
+
 ## How To Use
 
 1. Build a virualenv
-    - python 2: `virtualenv venv --distribute; source venv/bin/activate`
     - python 3: `python3 -m venv venv; . ./venv/bin/activate`
 2. Install python packages
     - `pip install -r requirements.txt`
 3. Run main.py
-    - python 2: `python main.py`
     - python 3: `python3 main.py`
 
 

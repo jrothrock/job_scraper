@@ -89,11 +89,11 @@ class JobScraper(object):
                 if any(x <= 2 for x in scrapeList):
                     break
 
-        if self.builtIn == True:
-            self.initBuiltIn()
-        
         if self.google == True:
             self.initGoogle()
+
+        if self.builtIn == True:
+            self.initBuiltIn()
         
         print("\n** Job Scraper Completed, Returning To Main Dashboard **")
         time.sleep(1)
@@ -143,7 +143,11 @@ class JobScraper(object):
 
             self.driver.get(url)
             time.sleep(1)
-            wait = WebDriverWait(self.driver, 100).until(EC.visibility_of_element_located((By.CLASS_NAME, "view-display-id-jobs_landing")))
+            try:
+                wait = WebDriverWait(self.driver, 12).until(EC.visibility_of_element_located((By.CLASS_NAME, "view-display-id-jobs_landing")))
+            except:
+                print("Browser timed out. You may have been flagged as a bot")
+                return self
 
             body = self.driver.find_element_by_class_name('view-display-id-jobs_landing')
             rows = body.find_elements(By.CLASS_NAME, "views-row")
@@ -167,6 +171,7 @@ class JobScraper(object):
 
             if self.checkTime(lastDate) == True:
                 page += 1
+                time.sleep(2)
             else:
                 break
                 
@@ -175,7 +180,7 @@ class JobScraper(object):
     def scrapeBuiltInPost(self, BuiltInUrl, posted):
         self.driver.get(BuiltInUrl)
         time.sleep(1)
-        wait = WebDriverWait(self.driver, 100).until(EC.visibility_of_element_located((By.CLASS_NAME, "block-region-middle")))
+        wait = WebDriverWait(self.driver, 12).until(EC.visibility_of_element_located((By.CLASS_NAME, "block-region-middle")))
 
         body = self.driver.find_element_by_class_name('block-region-middle')
         try:
@@ -196,8 +201,10 @@ class JobScraper(object):
                     print(ex)
         
     def initGoogle(self):
-        print("\nWhat is the location of the job you're looking for:")
+        print("\nWhat is the location of the job you're looking for:\n If you'd like to select multiple cities, comma seperat them. (Ex: Denver, LA, Boston)")
         location = input("Location: ")
+
+        locationList = list(filter(None, [x.strip() for x in location.split(',')]))
 
         print('\nHow far back (in days) are you willing to look? (A smaller number is recommended, as there may already be a lot of applicants)\nOptions:\n 1. Today\n 2. 3 days\n 3. 1 week \n 4. 1 month')
 
@@ -250,10 +257,11 @@ class JobScraper(object):
             self.contractToHireBoolean = False
 
         for job in self.jobs:
-            jobStr = job.replace(" ", "+")
-            locStr = location.strip().replace(" ", "+") 
-            url = "https://www.google.com/search?q=" + jobStr + "+" + locStr + "+jobs" + "&ibp=htl;jobs#htivrt=jobs&fpstate=tldetail&htichips=date_posted:"+daysStr+"&htischips=date_posted;"+daysStr+"&htilrad="+radiusStr
-            self.scrapeGoogle(url)
+            for location in locationList:
+                jobStr = job.replace(" ", "+")
+                locStr = location.strip().replace(" ", "+") 
+                url = "https://www.google.com/search?q=" + jobStr + "+" + locStr + "+jobs" + "&ibp=htl;jobs#htivrt=jobs&fpstate=tldetail&htichips=date_posted:"+daysStr+"&htischips=date_posted;"+daysStr+"&htilrad="+radiusStr
+                self.scrapeGoogle(url)
 
     def scrapeGoogle(self, url):
         print("\nScraping Google. This may take awhile...")
@@ -274,11 +282,17 @@ class JobScraper(object):
             location = self.driver.execute_script("return document.getElementsByClassName('tJ9zfc')["+str(index)+"].children[1].innerText")
             description = self.driver.execute_script("return document.getElementsByClassName('HBvzbc')["+str(index)+"].innerText")
             posted = self.driver.execute_script("return document.getElementsByClassName('ocResc')["+str(index)+"].querySelectorAll('span[aria-label=\"Posted\"]')[0].parentElement.querySelector('.SuWscb').innerText")
+            # there's a better way to do get the postURL, but it requires clicking on every post, so that the other links load. Then it's possible to scrape for LinkedIn urls.
+            # example for LinkedIn, but it'd need an if statement if there's no LinkedIn one in the end.
+            # document.evaluate(".//div[contains(@class, 'mR2gOd')]//a[contains(text(),'Apply on LinkedIn')]", document.getElementsByClassName('pE8vnd')[11], null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+
+            postUrl = self.driver.execute_script("return document.evaluate(\".//div[contains(@class, 'mR2gOd')]//a\", document.getElementsByClassName('pE8vnd')["+str(index)+"], null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.getAttribute('href')")
+
             t2dDescription = self.t2d.convert(description)
             if self.checkExperience(t2dDescription) == True:
                 if len(self.keywords) == 0 or any(word in t2dDescription for word in self.keywords):
                     if self.contractToHireBoolean == True or self.contractToHire.match(t2dDescription) != None:
-                        self.noteCompany(title, company, location, url, self.getDate(posted))
+                        self.noteCompany(title, company, location, postUrl, self.getDate(posted))
 
         time.sleep(2)
 

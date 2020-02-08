@@ -215,6 +215,7 @@ class Init(object):
             print("\nWould you like to look for certain keywords in the description? Keywords can be degree majors, skills, certifications, etc. (recommended)")
             if self.validate() == True:
                 self.newKeyWords()
+
         else:
             with open('./utils/keywords.yml') as file:
                 document = yaml.full_load(file)
@@ -225,13 +226,13 @@ class Init(object):
     
     def newKeyWords(self):
         self.clean('keywords')
-        
+
         self.getKeyWords()
 
         yaml_keywords = [{"KeyWords": self.keywords}]
         with open(r'./utils/keywords.yml', 'w') as file:
             documents = yaml.dump(yaml_keywords, file)
-    
+
     def getKeyWords(self):
         self.typeOfKeywords()
 
@@ -243,7 +244,7 @@ class Init(object):
     def typeOfKeywords(self):
         self.keywords = []
 
-        print("\n Please input the keywords you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\n Enter each one, one at a time. Enter \"Done\" when you're finished \n")
+        print("\n Please input the keywords you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\nEnter each one, one at a time. Enter \"Done\" when you're finished \n")
         while True:
             keywordsInput = input("Key Words: ")
             if keywordsInput.lower() == "done":

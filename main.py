@@ -1,5 +1,6 @@
 from init import Init 
 from job_scraper import JobScraper
+from scrape_emails import ScrapeEmails
 import os.path
 import re
 import time
@@ -11,30 +12,29 @@ class Main(object):
     def __init__(self):
         self.userQuit = False
         self.checkIsOption = re.compile('^[0-9qQ\^C]+$')
-        if os.path.exists('./utils/files.yml') == True:
-            with open(r'./utils/files.yml') as file:
-                self.path = yaml.full_load(file)
-        else:
-            self.path = {}
+        self.checkFilesPath()
 
     def begin(self):
         try:
             self.intro()
-            progress = self.checkProgress()
-            if progress == 1:
-                self.start(progress)
-            else: 
-                while True:
-                    try:
+            while True:
+                try:
+                    progress = self.checkProgress()
+                    if progress == 1:
+                        self.start(progress)
+                    else: 
                         begin = self.getOption(progress)
-                    except (KeyboardInterrupt, SystemExit):
-                        if progress == 1 or self.userQuit == True:
-                            raise
-                        else: 
-                            pass
-                    except Exception as e:
-                        print(e)
-                        self.tryAndFix()
+                        if progress == 2:
+                            # have to recheck files path, as this may have changed in the progress == 2 step, and we want the ask where to start to be current
+                            self.checkFilesPath()
+                except (KeyboardInterrupt, SystemExit):
+                    if progress == 1 or self.userQuit == True:
+                        raise
+                    else: 
+                        pass
+                except Exception as e:
+                    print(e)
+                    self.tryAndFix()
 
         except Exception as e: 
             print(e) 
@@ -53,8 +53,15 @@ class Main(object):
             with JobScraper() as js:
                 js.checkScrape()
         if progress == 3:
-            print("\nScrape Emails has not been built yet, check back in a little! Returning to Main Dashboard")
-            time.sleep(3)
+           with ScrapeEmails() as se:
+               se.begin()
+        
+    def checkFilesPath(self):
+        if os.path.exists('./utils/files.yml') == True:
+            with open(r'./utils/files.yml') as file:
+                self.path = yaml.full_load(file)
+        else:
+            self.path = {}
  
 
     def checkProgress(self):
@@ -65,7 +72,7 @@ class Main(object):
         keywords = os.path.exists('./utils/keywords.yml') == True
         if any(file == False for file in [experience,personal,files,keywords,jobs]):
             return 1
-        elif os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
+        elif "path" not in self.path or os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
             return 2
         else:
             return 3
@@ -118,12 +125,16 @@ class Main(object):
         print("Here's the good news. It may be fixable. Bad news, I will have to delete all application files/data, including the JobSraper folder.")
         print("I'd suggest backing up or renaming the folder")
         print("There's more bad news... The program will close when this is done (so you'll have to relaunch it.) If you get this same message, then this program will not work. I'm sorry. \n")
-        while True:
-            fix = input("Would you like to erase all of the application's files/data and see if this fixes it? (Y or N): ")
-            if fix.lower() == "y":
+
+        print("\nWould you like to erase all of the application's files/data and see if this fixes it?")
+        if self.validate() == True:
+            print("\n\nJUST TO DOUBLE CHECK, are you sure you want to? This will delete things like scraped_jobs.xlsx, and scraped_emails.xlsx as well")
+            if self.validate() == True:
                 self.cleanEverything()
-            if fix.lower() == "n":
+            else:
                 exit()
+        else:
+            exit()
 
     def cleanEverything(self):
         files = ["./utils/experience.yml", './utils/personal.yml', './utils/files.yml', './utils/keywords.yml', './utils/jobs.yml']
@@ -142,6 +153,14 @@ class Main(object):
         print("All contents have been removed. Please relaunch the application.")
         time.sleep(2)
         exit()
+
+    def validate(self):
+        while True:
+            q = input("(Y or N): ")
+            if q.lower() == "y":
+                return True
+            if q.lower() == "n":
+                return False
     
     def __enter__(self):
         return self
