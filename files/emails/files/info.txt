@@ -1,0 +1,1 @@
+This file is where your resume will need to be placed, as well as your google client authentication file.

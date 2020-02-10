@@ -47,15 +47,10 @@ class JobScraper(object):
                 data = yaml.load(f, Loader=yaml.FullLoader)
                 self.minimum = int(data['minimum']) if data['minimum'] != None else None
                 self.maximum = int(data['maximum']) if data['maximum'] != None else None
+                self.includeNoMention = bool(data['includeNoMention'])
         else:
             self.minimum = None
             self.maximum = None
-
-        if os.path.exists('./utils/personal.yml') == True:
-            with open(r'./utils/personal.yml') as file:
-                self.info = yaml.full_load(file)
-        else:
-            self.info = {}
         
         if os.path.exists('./utils/files.yml') == True:
             with open(r'./utils/files.yml') as file:
@@ -69,6 +64,13 @@ class JobScraper(object):
                 self.keywords = list(document[0].values())[0]
         else:
             self.keywords = []
+        
+        if os.path.exists('./utils/antiwords.yml') == True:
+            with open(r'./utils/antiwords.yml') as file:
+                document = yaml.full_load(file)
+                self.antiwords = list(document[0].values())[0]
+        else:
+            self.antiwords = []
     
     def checkScrape(self):
         print("\n\n//////")
@@ -183,25 +185,28 @@ class JobScraper(object):
         wait = WebDriverWait(self.driver, 12).until(EC.visibility_of_element_located((By.CLASS_NAME, "block-region-middle")))
 
         body = self.driver.find_element_by_class_name('block-region-middle')
+
         try:
             button = body.find_element_by_xpath('.//div[@id="read-more-description-toggle"]/span')
             button.click()
         except:
             pass
+
         description = body.find_element_by_xpath('.//div[@class="job-description"]')
         t2dDescription = self.t2d.convert(description.text)
-        if self.checkExperience(t2dDescription) == True:
+        if (self.includeNoMention == True and self.findYearsOfExperience.match(t2dDescription) == None) or self.checkExperience(t2dDescription) == True:
             if len(self.keywords) == 0 or any(word in t2dDescription for word in self.keywords):
-                try:
-                    title = body.find_element_by_xpath('.//h1[@class="node-title"]/span').text
-                    company = body.find_element_by_xpath('.//div[@class="job-info"]/div/div/a').text
-                    location = body.find_element_by_xpath('.//span[@class="company-address"]').text
-                    self.noteCompany(title, company, location, BuiltInUrl, self.getDate(posted))
-                except Exception as ex:
-                    print(ex)
+                if len(self.antiwords) == 0 or any(word in t2dDescription for word in self.antiwords) == False:
+                    try:
+                        title = body.find_element_by_xpath('.//h1[@class="node-title"]/span').text
+                        company = body.find_element_by_xpath('.//div[@class="job-info"]/div/div/a').text
+                        location = body.find_element_by_xpath('.//span[@class="company-address"]').text
+                        self.noteCompany(title, company, location, BuiltInUrl, 'BuiltIn', self.getDate(posted))
+                    except Exception as ex:
+                        print(ex)
         
     def initGoogle(self):
-        print("\nWhat is the location of the job you're looking for:\n If you'd like to select multiple cities, comma seperat them. (Ex: Denver, LA, Boston)")
+        print("\nWhat is the location of the job you're looking for:\nIf you'd like to select multiple cities, comma seperat them. (Ex: Denver, LA, Boston)")
         location = input("Location: ")
 
         locationList = list(filter(None, [x.strip() for x in location.split(',')]))
@@ -289,10 +294,11 @@ class JobScraper(object):
             postUrl = self.driver.execute_script("return document.evaluate(\".//div[contains(@class, 'mR2gOd')]//a\", document.getElementsByClassName('pE8vnd')["+str(index)+"], null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.getAttribute('href')")
 
             t2dDescription = self.t2d.convert(description)
-            if self.checkExperience(t2dDescription) == True:
+            if (self.includeNoMention == True and self.findYearsOfExperience.match(t2dDescription) == None) or self.checkExperience(t2dDescription) == True:
                 if len(self.keywords) == 0 or any(word in t2dDescription for word in self.keywords):
-                    if self.contractToHireBoolean == True or self.contractToHire.match(t2dDescription) != None:
-                        self.noteCompany(title, company, location, postUrl, self.getDate(posted))
+                    if len(self.antiwords) == 0 or any(word in t2dDescription for word in self.antiwords) == False:
+                        if self.contractToHireBoolean == True or self.contractToHire.match(t2dDescription) != None:
+                            self.noteCompany(title, company, location, postUrl, 'Google Jobs', self.getDate(posted))
 
         time.sleep(2)
 
@@ -308,15 +314,15 @@ class JobScraper(object):
         else:
             return False
 
-    def noteCompany(self, title, company, location, url, datePosted):
+    def noteCompany(self, title, company, location, url, placeScraped, datePosted):
         if "path" in self.path and self.path['path'] != "":
-            columns = ['Title','Company','Location','URL', 'Date Posted', 'Date Scraped', 'Would You Like To Scrape Emails?','Emails Scraped', 'Date Emails Scraped', 'Have Emailed', 'Applied To (This one you\'ll have to manager on your own)', 'Applied To Date (Again, you\'ll have to manage this)']
-            job = [(title, company, location, url, datePosted, datetime.datetime.now().strftime("%x"), None, None, None, None, None, None)]
+            columns = ['Title','Company','Location','URL', 'Site', 'Date Posted', 'Date Scraped', 'Would You Like To Scrape Emails?','Emails Scraped/Attempted', 'Date Emails Scraped', 'Would you like to email?', 'Have Emailed', 'Date Emailed', 'Applied To (This one you\'ll have to manager on your own)', 'Applied To Date (Again, you\'ll have to manage this)']
+            job = [(title, company, location, url, placeScraped, datePosted, datetime.datetime.now().strftime("%x"), None, None, None, None, None, None, None, None)]
             if os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
                 excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/jobs/scraped_jobs.xlsx')
                 df = pd.DataFrame(job, columns=columns)
                 sf = StyleFrame(df)
-                sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Date Posted', 'Date Scraped'))
+                sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Site', 'Date Posted', 'Date Scraped'))
                 excel_writer.save()
             else:
                 df = pd.read_excel(self.path['path'] + '/jobs/scraped_jobs.xlsx', index=False)
@@ -326,7 +332,7 @@ class JobScraper(object):
                     dfnew = df.append(df2, ignore_index=True)
                     excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/jobs/scraped_jobs.xlsx')
                     sf = StyleFrame(dfnew)
-                    sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Date Posted', 'Date Scraped'))
+                    sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Site', 'Date Posted', 'Date Scraped'))
                     excel_writer.save()
 
         else:

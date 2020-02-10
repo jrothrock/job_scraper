@@ -16,6 +16,7 @@ import urllib.parse
 from StyleFrame import StyleFrame
 import http.client
 import json
+import datetime
 
 class ScrapeEmails(object):
     def __init__(self):
@@ -69,6 +70,9 @@ class ScrapeEmails(object):
                 
         self.scrape()
 
+        print("\n** Email Scraper Completed, Returning To Main Dashboard **")
+        time.sleep(1)
+
     def scrape(self):
         print("\nScraping LinkedIn. This may take awhile...")
         self.driver.get('http://www.linkedin.com')
@@ -81,13 +85,14 @@ class ScrapeEmails(object):
         for index, row in self.companies.iterrows():
             title = row["Title"]
             company = row["Company"]
+            site = row["Site"]
             query = company + " recruiter"
             queryURI = urllib.parse.quote(query)
             url = "https://linkedin.com/search/results/all/?keywords="+queryURI+"&origin=GLOBAL_SEARCH_HEADER"
-            self.scrapeLinkedIn(url, company)
+            self.scrapeLinkedIn(url, company, title, site)
             time.sleep(2)
             
-    def scrapeLinkedIn(self, url, company):
+    def scrapeLinkedIn(self, url, company, title, site):
         for i in range(3):
             # sometimes, there's a redirect error. This should minimize that
             try:
@@ -98,9 +103,9 @@ class ScrapeEmails(object):
                 continue
             break
 
-        self.scrape_people(company)
+        self.scrape_people(company, title, site)
     
-    def scrape_people(self,company):
+    def scrape_people(self,company, title, site):
         self.scroll_to_bottom()
         results = self.driver.find_elements(By.CSS_SELECTOR, ".search-result__wrapper")
         regexp = re.compile(r'.')
@@ -115,12 +120,12 @@ class ScrapeEmails(object):
                 if name.text != "LinkedIn Member" and '.' not in name.text and ' ' in name.text:
                     if (("recruiter" in sublineLvl1.lower() or "talent" in sublineLvl1.lower() or "human resources" in sublineLvl1.lower() or "hr" in sublineLvl1.lower()) and company.lower() in sublineLvl1.lower()) or ("current:" in sublineLvl3.lower() and ("recruiter" in sublineLvl3.lower() or "talent" in sublineLvl3.lower() or "human resources" in sublineLvl3.lower() or "hr" in sublineLvl3.lower()) and company.lower() in sublineLvl3.lower()):
                     #if isRecruiter.search(sublineLvl3) != None and isRecruiter.search(sublineLvl3) != None:
-                        self.checkEmail(name.text, company)
+                        self.checkEmail(name.text, company, title, site)
             except:
                 pass
                 
     
-    def spinName(self,name,company):
+    def spinName(self,name,company,title,site):
         firstName, lastName = self.getName(name)
         companyStr = company.lower().replace(' ', '')
 
@@ -144,10 +149,11 @@ class ScrapeEmails(object):
         ]
         
         if len(self.debounce_io) > 0:
-            self.checkEmailsDebounce(emails, name, company, 'y')
+            self.checkEmailsDebounce(emails, name, company, title, site, 'y')
         else:
             print("\nWriting emails to excel sheet. These emails have not been verified though, and therefore may not work/bounce.")
-            self.noteEmails(emails, name, company, 'n')
+            self.noteEmails(emails, name, company, title, site, 'n')
+            self.updateJobsSheet(company)
     
     def checkVerify(self):
         print("\nWould you like to verify the email addresses? This will require either a hunter.io account or a debounce.io account")
@@ -174,16 +180,16 @@ class ScrapeEmails(object):
         except Exception as e:
             print(e)
     
-    def checkEmail(self, name, company):
+    def checkEmail(self, name, company, title, site):
         try:
             if len(self.hunter_io) > 0:
-                self.checkEmailsHunter(name, company, 'y')
+                self.checkEmailsHunter(name, company, title, site, 'y')
             else:       
-                self.spinName(name, company)
+                self.spinName(name, company, title, site)
         except Exception as e:
             print(e)
 
-    def checkEmailsHunter(self, name, company, verified):
+    def checkEmailsHunter(self, name, company, title, site, verified):
         
         conn = http.client.HTTPSConnection("api.hunter.io")
 
@@ -206,15 +212,15 @@ class ScrapeEmails(object):
                     print(values)
             else:
                 print([values["data"]["email"]])
-                self.noteEmails([values["data"]["email"]], name, company, 'y')
+                self.noteEmails([values["data"]["email"]], name, company, title, site, 'y')
         except ValueError as ex:
             print(ex)
             pass
         except Exception as ex:
             print(ex)
+        self.updateJobsSheet(company)
 
-
-    def checkEmailsDebounce(self, emails, name, company, verified):
+    def checkEmailsDebounce(self, emails, name, company, title, site, verified):
         conn = http.client.HTTPSConnection("api.debounce.io")
         found = False
         risky = False
@@ -230,7 +236,8 @@ class ScrapeEmails(object):
                     risky = True
                     break
                 elif values['debounce']['result'] == "Safe to Send":
-                    self.noteEmails([email], name, company, verfied)
+                    self.noteEmails([email], name, company, title, site, verfied)
+                    self.updateJobsSheet(company)
                     found = True
                     break
                 elif "error" in values['debounce'] and values['debounce']["error"]  == "Credits Low":
@@ -245,34 +252,32 @@ class ScrapeEmails(object):
             print("Emails for this person have been marked as Risky, and can't by identified. Proceeding without adding")
         elif found == False:
             print("Unfortunuately, all email combinations were found to be invalid for this person. Proceeding without adding")
-        
-
-       
-    def noteEmails(self, emails, name, company, verified):
+            
+    def noteEmails(self, emails, name, company, title, site, verified):
         if "path" in self.path and self.path['path'] != "":
-            columns = ["name", "email", "company", "verified", "Want to email", "have emailed"]
+            columns = ["Name", "Email", "Title", "Company", "Site", "Verified", "Want To Email", "Have Emailed"]
             if os.path.exists(self.path['path'] + '/emails/scraped_emails.xlsx') == False:
                 emailsDf = []
                 for email in emails:
-                    emailsDf.append((name, email, company, verified, None, None))
+                    emailsDf.append((name, email, title, company, site, verified, None, None))
                 excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/emails/scraped_emails.xlsx')
                 df = pd.DataFrame(emailsDf, columns=columns)
                 sf = StyleFrame(df)
-                sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('name','email', 'company', 'verified'))
+                sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Name','Email', 'Title', 'Company', 'Site', 'Verified'))
                 excel_writer.save()
             else:
                 df = pd.read_excel(self.path['path'] + '/emails/scraped_emails.xlsx', index=False)
                 emailsDf = []
                 for email in emails:
                     # check if email has already been scraped
-                    if len(df.loc[(df.email == email)]) == 0:
-                        emailsDf.append((name, email, company, verified, None, None))
+                    if len(df.loc[(df.Email == email)]) == 0:
+                        emailsDf.append((name, email, title, company, site, verified, None, None))
                 if len(emailsDf):
                     df2 = pd.DataFrame(emailsDf, columns=columns)
                     dfnew = df.append(df2, ignore_index=True)
                     excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/emails/scraped_emails.xlsx')
                     sf = StyleFrame(dfnew)
-                    sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('name','email', 'company', 'verified'))
+                    sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Name', 'Email', 'Title', 'Company', 'Site', 'Verified'))
                     excel_writer.save()
 
         else:
@@ -293,15 +298,30 @@ class ScrapeEmails(object):
             current_height = new_height
             time.sleep(self.scroll_pause)
 
-        
-    def getCompanies(self):
+    def updateJobsSheet(self, company):
         if "path" in self.path:
             df = pd.read_excel(self.path['path'] + '/jobs/scraped_jobs.xlsx', index=False)
-            self.companies = df.loc[(df["Would You Like To Scrape Emails?"] == "y" ) & (df['Emails Scraped'] != "y")]
-            if len(self.companies) > 0:
-                return True
-            else:
-                return False
+            df.loc[(df["Company"] == company, ["Emails Scraped/Attempted","Date Emails Scraped"])] = ["Y", datetime.datetime.now().strftime("%x")]
+            excel_writer = StyleFrame.ExcelWriter(self.path['path'] + '/jobs/scraped_jobs.xlsx')
+            sf = StyleFrame(df)
+            sf.to_excel(excel_writer=excel_writer, row_to_add_filters=0, best_fit=('Title','Company','Location','URL', 'Date Posted', 'Date Scraped'))
+            excel_writer.save()
+        else:
+            raise ValueError('Couldn\'t find the path file')
+
+    def getCompanies(self):
+        if "path" in self.path:
+            try:
+                df = pd.read_excel(self.path['path'] + '/jobs/scraped_jobs.xlsx', index=False)
+                self.companies = df.loc[((df["Would You Like To Scrape Emails?"] == "y") |  (df["Would You Like To Scrape Emails?"] == "Y")) & ((df['Emails Scraped/Attempted'] != "y") | (df['Emails Scraped/Attempted'] != "Y"))]
+                if len(self.companies) > 0:
+                    return True
+                else:
+                    return False
+            except Exception as e:
+                print(e)
+                print("Hmm. Did you change any column names in the Excel sheet?")
+                raise ValueError('Something happened with pandas')
         else:
             raise ValueError('Couldn\'t find the path file')
 

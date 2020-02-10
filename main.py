@@ -1,6 +1,7 @@
 from init import Init 
 from job_scraper import JobScraper
 from scrape_emails import ScrapeEmails
+from emailer import Emailer
 import os.path
 import re
 import time
@@ -55,6 +56,9 @@ class Main(object):
         if progress == 3:
            with ScrapeEmails() as se:
                se.begin()
+        if progress == 4:
+            with Emailer() as e:
+                e.begin()
         
     def checkFilesPath(self):
         if os.path.exists('./utils/files.yml') == True:
@@ -66,16 +70,16 @@ class Main(object):
 
     def checkProgress(self):
         jobs = os.path.exists('./utils/jobs.yml') == True 
-        experience = os.path.exists('./utils/experience.yml') == True 
         personal = os.path.exists('./utils/personal.yml') == True
         files = os.path.exists('./utils/files.yml') == True
-        keywords = os.path.exists('./utils/keywords.yml') == True
-        if any(file == False for file in [experience,personal,files,keywords,jobs]):
+        if any(file == False for file in [personal,files,jobs]):
             return 1
         elif "path" not in self.path or os.path.exists(self.path['path'] + '/jobs/scraped_jobs.xlsx') == False:
             return 2
-        else:
+        elif os.path.exists(self.path['path'] + '/emails/scraped_emails.xlsx') == False:
             return 3
+        else:
+            return 4
          
     
 
@@ -107,7 +111,7 @@ class Main(object):
                     self.start(2)
                     break
                 elif option == "3":
-                    if progress <= 3:
+                    if progress >= 3:
                         self.start(3)
                         break
                 elif option == "4":

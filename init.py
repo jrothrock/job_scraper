@@ -11,6 +11,7 @@ class Init(object):
         self.jobs = []
         self.experience = {}
         self.keywords = []
+        self.antiwords = []
         self.yearsReg = re.compile('^[0-9\+\-\,\s]+$')
         self.checkIsNumber = re.compile('^[0-9\.]+$')
 
@@ -24,6 +25,7 @@ class Init(object):
             self.checkJobsUtils()
             self.checkExperienceUtils()
             self.checkKeyWordsUtils()
+            self.checkAntiWordsUtils()
 
             print("\n\nJust to double check:")
             print('You are searching for: ' + ', '.join(self.jobs) + ' jobs')
@@ -37,6 +39,11 @@ class Init(object):
                 print('With these keywords in the description: ' + ', '.join(self.keywords))
             else:
                 print("You did not specify any keywords")
+            
+            if len(self.antiwords) > 0:
+                print('With these antiwords in the description: ' + ', '.join(self.antiwords))
+            else:
+                print("You did not specify any antiwords")
 
             print("Is this correct?\n")
             if self.validate() == False:
@@ -51,7 +58,7 @@ class Init(object):
         else:
             with open('./utils/personal.yml') as file:
                 self.info = yaml.full_load(file)
-                print('\nFirst Name: ' + self.info['first'] + "; Last Name: " + self.info['last'] + "; Email: " + self.info['email'] + "; City: " + self.info['city'] + "; State: " + self.info['state'] + ". Is this still correct?")
+                print('\nFirst Name: ' + self.info['first'] + "; Last Name: " + self.info['last'] + "; Email: " + self.info['email'] + ". Is this still correct?")
                 if self.validate() == False:
                     self.newPerson()
             
@@ -67,7 +74,7 @@ class Init(object):
     def getPersonalInfo(self):
         self.enterPersonalInfo()
         
-        print('\nFirst Name: ' + self.info['first'] + "\nLast Name: " + self.info['last'] + "\nEmail: " + self.info['email'] + "\nCity: " + self.info['city'] + "\nState: " + self.info['state'])
+        print('\nFirst Name: ' + self.info['first'] + "\nLast Name: " + self.info['last'] + "\nEmail: " + self.info['email'])
         print('\nIs the above correct?')
         
         if self.validate() == False:
@@ -77,9 +84,7 @@ class Init(object):
     def enterPersonalInfo(self):
         self.info['first'] = input("First Name: ")
         self.info['last'] = input("Last Name: ")
-        self.info['email'] = input("Email: ")
-        self.info['city'] = input("City: ")
-        self.info['state'] = input("State: ")
+        self.info['email'] = input("Email (put the email you'd use for sending resumes): ")
     
     def checkFileUtils(self):
         pathString = None
@@ -209,12 +214,19 @@ class Init(object):
                 break
             else:
                 print("Only numbers are allowed")
+        
+        print("\nWould you like to include jobs that don\'t mention years of experience in the description?")
+        if self.validate() == True:
+            self.experience['includeNoMention'] = True
+        else:
+            self.experience['includeNoMention'] = True
+
     
     def checkKeyWordsUtils(self):
         if os.path.exists('./utils/keywords.yml') == False:
             print("\nWould you like to look for certain keywords in the description? Keywords can be degree majors, skills, certifications, etc. (recommended)")
             if self.validate() == True:
-                self.newKeyWords()
+                self.newKeyWords('Key Words')
 
         else:
             with open('./utils/keywords.yml') as file:
@@ -222,39 +234,63 @@ class Init(object):
                 self.keywords = list(document[0].values())[0]
                 print('\nYou were searching for jobs with the following keywords: ' + ', '.join(self.keywords) + ' is this still correct?')
                 if self.validate() == False:
-                    self.newExperience()
+                    self.newKeyWords('Key Words')
     
-    def newKeyWords(self):
-        self.clean('keywords')
+    def checkAntiWordsUtils(self):
+        if os.path.exists('./utils/antiwords.yml') == False:
+            print("\nWould you like to remove any searchs that have certain antiwords in their description? Antiwords can be things like travel, certain skills, etc.")
+            if self.validate() == True:
+                self.newKeyWords('Anti Words')
 
-        self.getKeyWords()
+        else:
+            with open('./utils/antiwords.yml') as file:
+                document = yaml.full_load(file)
+                self.keywords = list(document[0].values())[0]
+                print('\nYou were searching for jobs with the following keywords: ' + ', '.join(self.keywords) + ' is this still correct?')
+                if self.validate() == False:
+                    self.newKeyWords('Anti Words')
+    
+    def newKeyWords(self, typeOfWords):
+        if typeOfWords == "keywords":
+            self.clean('keywords')
+        else:
+            self.clean('antiwords')
 
-        yaml_keywords = [{"KeyWords": self.keywords}]
-        with open(r'./utils/keywords.yml', 'w') as file:
-            documents = yaml.dump(yaml_keywords, file)
+        words = self.getWords(typeOfWords)
 
-    def getKeyWords(self):
-        self.typeOfKeywords()
+        yaml_words = [{"words": words}]
+        with open(r'./utils/' + typeOfWords.strip().lower().replace(" ", "") + '.yml', 'w') as file:
+            documents = yaml.dump(yaml_words, file)
 
-        print('\nYou listed: ' + ', '.join(self.keywords) + ' is this correct?')
+    def getWords(self, typeOfWords):
+        words = self.typeOfWords(typeOfWords)
+
+        print('\nYou listed: ' + ', '.join(words) + ' is this correct?')
         
         if self.validate() == False:
             self.getKeyWords()
 
-    def typeOfKeywords(self):
-        self.keywords = []
+        return words
 
-        print("\n Please input the keywords you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\nEnter each one, one at a time. Enter \"Done\" when you're finished \n")
+    def typeOfWords(self, typeWords):
+        words = []
+
+        print("\n Please input the " + typeWords.strip().lower().replace(" ", "") + " you want the job to have. Single word inputs are a lot better. \n examples: Wordpress, FP&A, PMP, Salesforce, Angular, etc. \n\nEnter each one, one at a time. Enter \"Done\" when you're finished \n")
         while True:
-            keywordsInput = input("Key Words: ")
+            keywordsInput = input(typeWords + ": ")
             if keywordsInput.lower() == "done":
                 break
             else:
                 if "," in keywordsInput.strip():
                     keywordsList = list(filter(None, [x.strip() for x in keywordsInput.split(',')]))
-                    self.keywords = self.keywords + keywordsList
+                    words = self.keywords + keywordsList
                 else:
-                    self.keywords.append(keywordsInput.strip())
+                    words.append(keywordsInput.strip())
+        if typeWords == "keywords":
+            self.keywords = words
+        else:
+            self.antiwords = words
+        return words
 
     def validate(self):
         while True:
@@ -274,6 +310,8 @@ class Init(object):
                 os.remove('./utils/experience.yml')
             if typ == "keywords":
                 os.remove('./utils/keywords.yml')
+            if typ == "antiwords":
+                os.remove('./utils/antiwords.yml')
         except OSError:
             pass 
         
