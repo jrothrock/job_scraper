@@ -1,0 +1,17 @@
+This is where email templates can be created. They need to end with the extension .jset for the application to pick them
+
+!Note! When making these templates, you can use "variables" that the program will replace with each individual email.
+
+
+{company} -> The company you are applying to
+    Ex:
+        Applying to {company} -> Applying to Ford
+
+List of variables:
+{company} -> The company you are applying to
+{recipientFirst} -> The recipient/recruiter's first name,
+{recipientLast} -> The recipient/recruiter's last name
+{first} -> Your first name (that you entered at the beginning)
+{last} -> Your last name (that you entered at the beginning)
+{title} -> The title of the position you are applying for
+{website} -> the site that you found the job on (This is either Google Jobs, or BuiltIn)

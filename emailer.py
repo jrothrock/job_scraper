@@ -56,7 +56,7 @@ class Emailer(object):
         print("Email Sender")
         print("//////")
 
-        print("\nBefore we can continue, have you gone into the scraped_jobs.xlsx and marked the jobs you want to email (by putting a Y in the \"Would you like to email?\" columns)\nSee 0:00, in the video () for more information.")
+        print("\nBefore we can continue, have you gone into the scraped_jobs.xlsx and marked the jobs you want to email (by putting a Y in the \"Would you like to email?\" columns)\nSee 5:18, in the video (https://www.youtube.com/watch?v=RvCyLQK7VMo) for more information.")
         
         if self.validate() == False:
             return self
@@ -69,13 +69,13 @@ class Emailer(object):
             else:
                 break
 
-        print("\nHave you placed your Gmail credentials.json in the files path?\nSee 0:00, in the video () for more information on how to obtain this.")
+        print("\nHave you placed your Gmail credentials.json in the files path?\nSee 6:01, in the video (https://www.youtube.com/watch?v=RvCyLQK7VMo) for more information on how to obtain this.")
         if self.validate() == False:
             return self
         else:
             while True:
                 if os.path.exists(self.path['path'] + '/emails/files/credentials.json') == False:
-                    print("\nHmm. We weren't able to your resume. We looked in this path: " + self.path['path'] + '/emais/files/' + self.info["first"] + ' ' + self.info["last"] + '\'s Resume.pdf.' + " Would you like to try again?")
+                    print("\nHmm. We weren't able to find your credentials. We looked in this path: " + self.path['path'] + '/emails/files/credentials.json\nGo to this link to download the credentials: https://developers.google.com/gmail/api/quickstart/python and click "Enable the Gmail API"\n' + "Would you like to try again?")
                     if self.validate() == False:
                         return self
                 else:
@@ -84,15 +84,15 @@ class Emailer(object):
         print("\nWould you like to include your resume? We will look for you resume within the JobScraper -> emails -> files folder with the name: \"" + self.info["first"] + " " + self.info["last"] + "'s Resume.pdf\"")
         if self.validate() == True:
             while True:
-                if os.path.exists(self.path['path'] + '/emails/files/' + self.info["first"] + ' ' + self.info["last"] + '\'s Resume.pdf') == False:
-                    print("\nHmm. We weren't able to your resume. We looked in this path: " + self.path['path'] + '/emais/files/' + self.info["first"] + ' ' + self.info["last"] + '\'s Resume.pdf.' + " Would you like to try again?")
+                if os.path.exists(self.path['path'].strip() + '/emails/files/' + self.info["first"].strip() + ' ' + self.info["last"].strip() + '\'s Resume.pdf') == False:
+                    print("\nHmm. We weren't able to your resume. We looked in this path: " + self.path['path'] + '/emails/files/' + self.info["first"] + ' ' + self.info["last"] + '\'s Resume.pdf.' + " Would you like to try again?")
                     if self.validate() == False:
                         return self
                 else:
                     self.resume = True
                     break
         
-        print("\nWould you like to only email verified emails?")
+        print("\nWould you like to email only verified emails?")
         if self.validate() == True:
             self.onlyValid = True
         else:

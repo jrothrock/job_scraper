@@ -4,7 +4,7 @@ import yaml
 import re
 import pathlib
 import shutil 
-
+import os
 class Init(object):
     def __init__(self):
         self.info = {}
@@ -85,7 +85,7 @@ class Init(object):
         self.info['first'] = input("First Name: ")
         self.info['last'] = input("Last Name: ")
         self.info['email'] = input("Email (put the email you'd use for sending resumes): ")
-    
+
     def checkFileUtils(self):
         pathString = None
         if os.path.exists('./utils/files.yml') == False:
@@ -102,9 +102,6 @@ class Init(object):
                     elif destination == "2":
                         pathString = homePath + "/desktop"
                         break
-                    elif destination == "3":
-                        pathString = homePath + "/downloads"
-                        break
                     else:
                       print("Only numbers are allowed. Please enter 1 for documents, 2 for desktop, or 3 for downloads")  
                 else:
@@ -116,6 +113,8 @@ class Init(object):
                     currentPath = str(pathlib.Path().absolute())
                     filesPath = currentPath + "/files"
                     shutil.copytree(filesPath, folderPath) 
+                    os.utime(folderPath)
+
                     
                 with open(r'./utils/files.yml', 'w') as file:
                     documents = yaml.dump({"path": folderPath}, file)
@@ -219,7 +218,7 @@ class Init(object):
         if self.validate() == True:
             self.experience['includeNoMention'] = True
         else:
-            self.experience['includeNoMention'] = True
+            self.experience['includeNoMention'] = False
 
     
     def checkKeyWordsUtils(self):
@@ -251,7 +250,7 @@ class Init(object):
                     self.newKeyWords('Anti Words')
     
     def newKeyWords(self, typeOfWords):
-        if typeOfWords == "keywords":
+        if typeOfWords == "Key Words":
             self.clean('keywords')
         else:
             self.clean('antiwords')
@@ -286,7 +285,7 @@ class Init(object):
                     words = self.keywords + keywordsList
                 else:
                     words.append(keywordsInput.strip())
-        if typeWords == "keywords":
+        if typeWords == "Key Words":
             self.keywords = words
         else:
             self.antiwords = words

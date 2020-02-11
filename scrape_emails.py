@@ -45,7 +45,7 @@ class ScrapeEmails(object):
         print("Email Scraper")
         print("//////")
 
-        print("\nBefore we can continue, have you gone into the scraped_jobs.xlsx and marked the jobs you want to scrape (by putting a Y in the \"Would You Like To Scrape Emails\" columns)\nSee 0:00, in the video () for more information.")
+        print("\nBefore we can continue, have you gone into the scraped_jobs.xlsx and marked the jobs you want to scrape (by putting a Y in the \"Would You Like To Scrape Emails\" columns)\nSee 3:48, in the video (https://www.youtube.com/watch?v=RvCyLQK7VMo) for more information.")
 
         if self.validate() == False:
             return self
@@ -58,7 +58,7 @@ class ScrapeEmails(object):
             else:
                 break
         
-        print("\nWhat is your li_at cookie on LinkedIn? Watch 0:00 of the instructional video () on how to obtain this")
+        print("\nWhat is your li_at cookie on LinkedIn? Watch 4:02 of the instructional video (https://www.youtube.com/watch?v=RvCyLQK7VMo) on how to obtain this")
         while True:
             self.li_at = input("Paste li_at cookie: ")
             if len(self.li_at) > 0:
@@ -127,7 +127,7 @@ class ScrapeEmails(object):
     
     def spinName(self,name,company,title,site):
         firstName, lastName = self.getName(name)
-        companyStr = company.lower().replace(' ', '')
+        companyStr = company.lower().replace(' ', '').replace(",", "").replace(".", "").replace("inc", "").replace("llc", "").replace("corp", "")
 
         emails = [
             firstName + '.' + lastName + '@' + companyStr + '.com',
@@ -164,12 +164,12 @@ class ScrapeEmails(object):
                     option = input("Which option would like to select: ")
                     if self.checkIsNumber.match(option):
                         if option == "1":
-                            print("\nWhat is your hunter.io api key? Watch 0:00 of the instructional video () on how to obtain this")
+                            print("\nWhat is your hunter.io api key? Watch 4:25 of the instructional video (https://www.youtube.com/watch?v=RvCyLQK7VMo) on how to obtain this")
                             print("You can proceed through this, by hitting enter with no value, but the emails you send may not be valid, and your email account may be marked as spam.")
                             self.hunter_io = input("Paste API key: ")
                             break
                         elif option == "2":
-                            print("\nWhat is your debounce.io api key? Watch 0:00 of the instructional video () on how to obtain this")
+                            print("\nWhat is your debounce.io api key?")
                             print("You can proceed through this, by hitting enter with no value, but the emails you send may not be valid, and your email account may be marked as spam.")
                             self.debounce_io = input("Paste API key: ")
                             break
@@ -197,7 +197,7 @@ class ScrapeEmails(object):
             firstName, lastName = self.getName(name)
             full_name = firstName + "+" + lastName
             print(full_name)
-            conn.request("GET", "/v2/email-finder?company=" + company.lower() + "&full_name=" + full_name + "&api_key=" + self.hunter_io)
+            conn.request("GET", "/v2/email-finder?company=" + urllib.parse.quote(company.lower()) + "&full_name=" + full_name + "&api_key=" + self.hunter_io)
 
             res = conn.getresponse()
             data = res.read().decode("utf-8")

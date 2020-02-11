@@ -8,9 +8,12 @@ import time
 import yaml
 import os
 import shutil
+from sys import exit
+import pathlib
 
 class Main(object):
     def __init__(self):
+        self.checkForUtils()
         self.userQuit = False
         self.checkIsOption = re.compile('^[0-9qQ\^C]+$')
         self.checkFilesPath()
@@ -39,7 +42,6 @@ class Main(object):
 
         except Exception as e: 
             print(e) 
-            print('here')
 
     def intro(self):
         time.sleep(0.5)
@@ -157,6 +159,13 @@ class Main(object):
         print("All contents have been removed. Please relaunch the application.")
         time.sleep(2)
         exit()
+    
+    def checkForUtils(self):
+        f = 'job_scraper.command'
+        for path, dirs, files in os.walk(str(pathlib.Path().home()) + "/Downloads"):
+            if f in files:
+                os.chdir(path)
+                break
 
     def validate(self):
         while True:
